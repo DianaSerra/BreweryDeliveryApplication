@@ -48,41 +48,26 @@ class BreweryDeliveryApplication
 		Connection con = DriverManager.getConnection (url,"cs421g70", "beepboop70") ;
 		Statement statement = con.createStatement ( ) ;
 
-		//TODO: Implement quit for welcome screen
-		while(!loggedIn){
-			int loginOption= initiationScreen(myObj);
+		int quitApp=1;
+		while(quitApp!=0) {
+			while (!loggedIn) {
+				int loginOption = initiationScreen(myObj);
 
-			// Register the driver.  You must register the driver before you can use it.
-
-			if(loginOption == 1){
-				loggedIn=loginUser(statement, myObj, app);
-			}else{
-				loggedIn=registerUser(statement, myObj, app);
+				// Register the driver.  You must register the driver before you can use it.
+				if (loginOption == 1) {
+					loggedIn = loginUser(statement, myObj, app);
+				} else if(loginOption==0) {
+					return;
+				}else{
+					loggedIn = registerUser(statement, myObj, app);
+				}
 			}
-			System.out.println("logged in: "+loggedIn);
 
-		}
-
-		int mainMenuOption=1;
-
-		//TODO: Make sure that you choosing option 0 will take you back to welcome screen
-		while(mainMenuOption!=0){
-
-			mainMenuOption=mainMenuScreen(myObj);
-
-			if(mainMenuOption==1){
-				displayAllRestaurants(statement, myObj, app);
-			} else if (mainMenuOption==2){
-				displayRestaurantsByRating(statement, myObj, app);
-			} else if (mainMenuOption==3){
-				displayRestaurantsByPriceLevel(statement, myObj, app);
-			} else if (mainMenuOption==4){
-				displayOrderHistory(statement, myObj,app);
-			} else if (mainMenuOption==5){
-				changeDeliveryAddress(statement,myObj,app);
+			quitApp = mainMenuScreen(statement, myObj, app);
+			if(quitApp==6){
+				loggedIn=false;
 			}
 		}
-
 
 		statement.close ( ) ;
 		con.close ( ) ;
@@ -205,7 +190,7 @@ class BreweryDeliveryApplication
 		int priceLevelSelection=0;
 
 		while(priceLevelSelection!=1 && priceLevelSelection!=2 && priceLevelSelection!=3 && priceLevelSelection!=4) {
-			System.out.println("\n**VIEW BREWERIES BY RATING **\n");
+			System.out.println("\n**VIEW BREWERIES BY PRICE POINT **\n");
 			System.out.println("Select the price point of the breweries you want to view");
 			System.out.println("[1] $");
 			System.out.println("[2] $$");
@@ -348,15 +333,12 @@ class BreweryDeliveryApplication
 	}
 
 	private static void addItemsToOrder(Statement statement, Scanner myObj, BreweryDeliveryApplication app, Brewery chosenBrewery) {
-		int itemSelected=-1;
 		Order tempOrder=new Order(chosenBrewery);
 		DecimalFormat df2 = new DecimalFormat("0.00");
 
-		while(itemSelected!=0){
+		while(true){
 			System.out.println("\nEnter an item number from the menu above to add to add it your order");
-			System.out.println("Alternatively, enter [0] to proceed to main menu or [s] to submit your cart");
-			//TODO deal with the symbol issue! (try a try-catch on parseInt???)
-			//TODO: Add option to delete an item from cart
+			System.out.println("Alternatively, enter [0] to return to main menu or [s] to submit your cart");
 			String optionChosen="";
 			try {
 				optionChosen = myObj.nextLine();
@@ -373,40 +355,48 @@ class BreweryDeliveryApplication
 					System.out.println("You have not added enough items to your cart! The order minimum is $"+
 							tempOrder.orderBrewery.order_minimum+"\n");
 				}
-			}else if (parseInt(optionChosen)==0){
+			}else if (optionChosen.equals("0")){
 				return;
-			}else if(parseInt(optionChosen)>0 && parseInt(optionChosen)<=app.selectedMenu.size()){
-				MenuItem selectedItem=app.selectedMenu.get(parseInt(optionChosen)-1);
-				System.out.println("Item Selected: "+selectedItem.name);
-				System.out.println("Price: "+selectedItem.price);
-				System.out.println("Description: "+selectedItem.description);
+			}else {
+				try{
+					if(parseInt(optionChosen)>0 && parseInt(optionChosen)<=app.selectedMenu.size()) {
+						MenuItem selectedItem = app.selectedMenu.get(parseInt(optionChosen) - 1);
+						System.out.println("Item Selected: " + selectedItem.name);
+						System.out.println("Price: " + selectedItem.price);
+						System.out.println("Description: " + selectedItem.description);
 
-				System.out.println("\nPlease indicate any special instructions for the restaurant (ex: no lemon) or press [Enter] to continue");
-				String specialInstructions=myObj.nextLine();
-				int quantity=-1;
-				while(quantity<=0){
-					System.out.println("\nPlease indicate the quantity you would like:");
-					try {
-						quantity = myObj.nextInt();
-					}catch(InputMismatchException e){
-						System.out.println("Error: Please try again with an integer value greater than 1!");
+						System.out.println("\nPlease indicate any special instructions for the restaurant (ex: no lemon) or press [Enter] to continue");
+						String specialInstructions = myObj.nextLine();
+						int quantity = -1;
+						while (quantity <= 0) {
+							System.out.println("\nPlease indicate the quantity you would like:");
+							try {
+								quantity = myObj.nextInt();
+							} catch (InputMismatchException e) {
+								System.out.println("Error: Please try again with an integer value greater than 1!");
+							}
+							myObj.nextLine();
+							if (quantity <= 0) {
+								System.out.println("Error: Please try again with an integer value greater than 1!");
+							}
+						}
+
+						//take quantity into account here
+						tempOrder.addItem(new OrderItem(selectedItem.name, selectedItem.price, selectedItem.description, specialInstructions, quantity));
+						System.out.println("\nItem Added!\nCart Summary:");
+						for (OrderItem i : tempOrder.items) {
+							System.out.println("x" + i.itemQuantity + " " + i.name + " ....... $" + df2.format(i.price));
+						}
+						System.out.println("Item Total ....... $" + df2.format(tempOrder.itemTotal));
+					}else{
+						System.out.println("\nOops! You did not input a valid option- try again!\n");
 					}
-					myObj.nextLine();
-					if(quantity<=0){
-						System.out.println("Error: Please try again with an integer value greater than 1!");
-					}
+				}catch(NumberFormatException e){
+					System.out.println("\"\\nOops! You did not input a valid option- try again!\\n\"");
 				}
 
-				//take quantity into account here
-				tempOrder.addItem(new OrderItem(selectedItem.name,selectedItem.price,selectedItem.description, specialInstructions,quantity));
-				System.out.println("\nItem Added!\nCart Summary:");
-				for(OrderItem i: tempOrder.items){
-					System.out.println("x"+i.itemQuantity+" "+i.name+" ....... $"+df2.format(i.price));
-				}
-				System.out.println("Item Total ....... $"+df2.format(tempOrder.itemTotal));
 
-			}else{
-				System.out.println("\nOops! You did not input a valid option- try again!\n");
+
 			}
 
 		}
@@ -583,8 +573,9 @@ class BreweryDeliveryApplication
 		} catch (SQLException e) {
 			sqlCode = e.getErrorCode(); // Get SQLCODE
 			sqlState = e.getSQLState(); // Get SQLSTATE
+			System.out.println("SQL Error:");
 			System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-		}
+			System.out.println("Please try again");		}
 		selectBrewery(statement, myObj,app);
 	}
 
@@ -625,59 +616,41 @@ class BreweryDeliveryApplication
 		} catch (SQLException e) {
 			sqlCode = e.getErrorCode(); // Get SQLCODE
 			sqlState = e.getSQLState(); // Get SQLSTATE
+			System.out.println("SQL Error:");
 			System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
-		}
+			System.out.println("Please try again");		}
 		selectBrewery(statement, myObj,app);
 	}
 
 	private static boolean registerUser(Statement statement, Scanner myObj, BreweryDeliveryApplication app) {
-		String userEmail, password, firstName, lastName, phoneNum, birthDate;
+		String userEmail, password, firstName, lastName, phoneNum, birthDate, deliveryStreetAddress, deliveryPostalCode,
+				billingStreetAddress, billingPostalCode, creditCardNum;
 		int sqlCode=0;      // Variable to hold SQLCODE
 		String sqlState="00000";  // Variable to hold SQLSTATE
+		System.out.println("\nCUSTOMER REGISTRATION:\n Note: YOU MUST BE OVER 18 TO REGISTER");
+		firstName=getStringNotEmpty("First Name:", myObj);
+		lastName=getStringNotEmpty("Last Name:", myObj);
+		userEmail=getStringNotEmpty("Email:", myObj);
+		password=getStringNotEmpty("Enter Password:", myObj);
+		birthDate= getStringNotEmpty("Birthdate (YYYY-MM-DD)", myObj);
+		phoneNum=getStringNotEmpty("Phone Number:", myObj);
 
-		System.out.println("First Name:");
-		firstName= myObj.nextLine();
 
-		System.out.println("Last Name:");
-		lastName= myObj.nextLine();
+		System.out.println("BILLING AND DELIVERY DETAILS");
+		System.out.println("Please fill in a few more details to create your account!\n");
 
-		System.out.println("Enter Email:");
-		userEmail = myObj.nextLine();  // Read user input
-
-		System.out.println("Enter Password:");
-		password= myObj.nextLine();
-
-		System.out.println("Birthdate (YYYY-MM-DD)");
-		birthDate= myObj.nextLine();
-
-		System.out.println("Phone Number:");
-		phoneNum= myObj.nextLine();
+		deliveryStreetAddress=getStringNotEmpty("DELIVERY ADDRESS\nStreet address:", myObj);
+		deliveryPostalCode=getStringNotEmpty("DELIVERY ADDRESS\nPostal Code:", myObj);
+		billingStreetAddress=getStringNotEmpty("BILLING ADDRESS\nStreet address:", myObj);
+		billingPostalCode=getStringNotEmpty("BILLING ADDRESS\nPostal Code:", myObj);
+		creditCardNum=getStringNotEmpty("Credit Card Number:", myObj);
 
 
 		try {
 			//System.out.println ( insertSQL ) ;
 
-			//TODO: should loop through this part of the menu until people fill it out right; maybe if they can't, delete them from database
-			System.out.println("CUSTOMER DETAILS");
-			System.out.println("Please fill in a few more details to create your account!\n");
-
-			System.out.println("DELIVERY ADDRESS");
-			System.out.println("Street address:");
-			String deliveryStreetAddress=myObj.nextLine();
-			System.out.println("Postal Code:");
-			String deliveryPostalCode=myObj.nextLine();
-
-			System.out.println("BILLING ADDRESS");
-			System.out.println("Street address:");
-			String billingStreetAddress=myObj.nextLine();
-			System.out.println("Postal Code:");
-			String billingPostalCode=myObj.nextLine();
-
-			System.out.println("Credit Card Number:");
-			String creditCardNum=myObj.nextLine();
-
 			String insertSQL = "INSERT INTO app_user VALUES (\'"+userEmail+"\' , \'"+firstName+"\' , \'"+lastName+
-					"\' , \'"+password+"\' , \'"+birthDate+"\' , \'"+phoneNum+"\');"
+					"\' , \'"+password+"\' , \'"+birthDate+"\' , \'"+phoneNum+"\') ON CONFLICT DO NOTHING;"
 					+ " INSERT INTO address VALUES (\'"+deliveryStreetAddress+"\', \'"+deliveryPostalCode+"\'), (\'"+
 					billingStreetAddress+"\', \'"+billingPostalCode+"\') ON CONFLICT DO NOTHING;"
 					+" INSERT INTO customer VALUES (\'"+userEmail+"\' , \'"+deliveryStreetAddress+"\' , \'"+billingStreetAddress+
@@ -691,9 +664,16 @@ class BreweryDeliveryApplication
 		} catch (SQLException e) {
 			sqlCode = e.getErrorCode(); // Get SQLCODE
 			sqlState = e.getSQLState(); // Get SQLSTATE
-			// Your code to handle errors comes here;
-			// something more meaningful than a print would be good
+			System.out.println("SQL Error:");
 			System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
+			if(sqlState.equals("23505")){
+				System.out.println("A user already exists with the email "+userEmail
+						+"\nPlease login to your account or create an account with a different email.");
+			}else if(sqlState.equals("23514")){
+				System.out.println("Error: We had trouble validating your information- please try again");
+			}else{
+				System.out.println("Please try again");
+			}
 			return false;
 		}
 
@@ -715,25 +695,30 @@ class BreweryDeliveryApplication
 
 
 		try {
+			String verifyCustomerSQL = "SELECT email FROM customer WHERE email=\'"+userEmail+"\'";
+			java.sql.ResultSet rs2 = statement.executeQuery ( verifyCustomerSQL ) ;
+			boolean userExists=false;
+			while ( rs2.next ( ) ) {
+				userExists=true;
+			}
+
+			if(!userExists){
+				System.out.println("User with email "+userEmail+" does not exist!\n");
+			}
 			String loginSQL = "SELECT pwd FROM app_user WHERE email=\'"+userEmail+"\'";
 			//System.out.println(loginSQL);
 			java.sql.ResultSet rs = statement.executeQuery ( loginSQL ) ;
 			while ( rs.next ( ) ) {
 				String registeredPwd = rs.getString("pwd");
 
-				if(!registeredPwd.equals(password)){
-					System.out.println(registeredPwd);
-					System.out.println("Wrong Password! Try again");
+				if (!registeredPwd.equals(password)) {
+					System.out.println("Wrong Password! Try again\n");
 					return false;
+				}else{
+					app.user= new User(userEmail, password);
+					return true;
 				}
 
-			}
-			String verifyCustomerSQL = "SELECT email FROM customer WHERE email=\'"+userEmail+"\'";
-			java.sql.ResultSet rs2 = statement.executeQuery ( verifyCustomerSQL ) ;
-			while ( rs2.next ( ) ) {
-				//String email=rs2.getString("email");
-				app.user= new User(userEmail, password);
-				return true;
 			}
 
 			return false;
@@ -742,7 +727,10 @@ class BreweryDeliveryApplication
 		} catch (SQLException e) {
 			sqlCode = e.getErrorCode(); // Get SQLCODE
 			sqlState = e.getSQLState(); // Get SQLSTATE
+			System.out.println("SQL Error:");
 			System.out.println("Code: " + sqlCode + "  sqlState: " + sqlState);
+			System.out.println("Please try again");
+
 			return false;
 		}
 
@@ -750,27 +738,28 @@ class BreweryDeliveryApplication
 	}
 
 	public static int initiationScreen(Scanner myObj){
-		System.out.println("**** WELCOME TO BREW-TO-ME ****");
+		System.out.println("**** WELCOME TO BREWDORA ****");
 		System.out.println("oooooo\n" +
 				"i====i_\n" +
 				"|    |_)\n" +
 				"|    |   \n" +
 				"`-==-'");
-		System.out.println(" To select an option, input the number in square brackets next " +
-				"to the option you wish to select");
+		System.out.println("Instructions: To select an option, type the character in square brackets next " +
+				"to the option you wish to select, and click enter");
 
-		int loginOption=0;
-		while(loginOption != 1 && loginOption !=2){
+		int loginOption=-1;
+		while(loginOption!=0 && loginOption != 1 && loginOption !=2){
+			System.out.println("[0] Quit App");
 			System.out.println("[1] Login");
 			System.out.println("[2] Register");
 
 			try {
 				loginOption = myObj.nextInt();
-				if(loginOption != 1 && loginOption !=2){
-					System.out.println("Oops! You did not select 1 or 2, try again!");
+				if(loginOption!=0 && loginOption != 1 && loginOption !=2){
+					System.out.println("Oops! You did not select 0 or 1 or 2, try again!");
 				}
 			}catch(InputMismatchException e){
-				System.out.println("Oops! You did not select 1 or 2, try again!");
+				System.out.println("Oops! You did not select 0 or 1 or 2, try again!");
 			}
 			myObj.nextLine();
 
@@ -779,43 +768,72 @@ class BreweryDeliveryApplication
 		return loginOption;
 	}
 
-	public static int mainMenuScreen(Scanner myObj) {
-		int selectedOption=-1;
-		while(selectedOption!=0 && selectedOption !=1 && selectedOption !=2 && selectedOption!=3 && selectedOption!=4 && selectedOption!=5){
-			System.out.println("[0] Logout");
-			System.out.println("[1] Browse All Breweries");
-			System.out.println("[2] Browse Breweries by Rating");
-			System.out.println("[3] Browse Breweries by Price Level");
-			System.out.println("[4] View Order History");
-			System.out.println("[5] Change Delivery Address");
+	public static int mainMenuScreen(Statement statement,Scanner myObj, BreweryDeliveryApplication app) {
+
+		int selectedOption=1;
+
+		while(selectedOption!=0 && selectedOption!=6){
+			selectedOption=-1;
+			while(selectedOption!=0 && selectedOption !=1 && selectedOption !=2 && selectedOption!=3 && selectedOption!=4 && selectedOption!=5 && selectedOption!=6){
+				System.out.println("\n**MAIN MENU**");
+				System.out.println("You are logged in as "+app.user.email);
+				System.out.println("[0] Quit App");
+				System.out.println("[1] Browse All Breweries");
+				System.out.println("[2] Browse Breweries by Rating");
+				System.out.println("[3] Browse Breweries by Price Level");
+				System.out.println("[4] View Order History");
+				System.out.println("[5] Change Delivery Address");
+				System.out.println("[6] Logout (return to welcome screen)");
 
 
-			try{
-				selectedOption=myObj.nextInt();
+				try{
+					selectedOption=myObj.nextInt();
 
-				if(selectedOption !=0 && selectedOption !=1 && selectedOption !=2 && selectedOption !=3 && selectedOption!=4 && selectedOption!=5){
+					if(selectedOption !=0 && selectedOption !=1 && selectedOption !=2 && selectedOption !=3
+							&& selectedOption!=4 && selectedOption!=5 && selectedOption!=6){
+						System.out.println("Oops! You did not select a valid menu option- try again!");
+					}
+				}catch(InputMismatchException e){
 					System.out.println("Oops! You did not select a valid menu option- try again!");
 				}
-			}catch(InputMismatchException e){
-				System.out.println("Oops! You did not select a valid menu option- try again!");
+				myObj.nextLine();
 			}
-			myObj.nextLine();
 
-
+			if(selectedOption==1){
+				displayAllRestaurants(statement, myObj, app);
+			} else if (selectedOption==2){
+				displayRestaurantsByRating(statement, myObj, app);
+			} else if (selectedOption==3){
+				displayRestaurantsByPriceLevel(statement, myObj, app);
+			} else if (selectedOption==4){
+				displayOrderHistory(statement, myObj,app);
+			} else if (selectedOption==5){
+				changeDeliveryAddress(statement,myObj,app);
+			}
 		}
 
 		return selectedOption;
 	}
-	public static boolean emailVerification(){
+	public static String getStringNotEmpty(String fieldToDisplay,  Scanner myObj){
+		boolean inputValid=false;
+		String userInput="";
+		while(!inputValid){
+			try{
+				System.out.println(fieldToDisplay);
+				userInput=myObj.nextLine();
+				if(!userInput.isEmpty()){
+					inputValid=true;
+				}else{
+					System.out.println("*This is a mandatory field, it cannot be left blank!");
+				}
+			} catch(InputMismatchException e){
+				System.out.println("You input an invalid character! Please limit responses to alphanumerical values!");
+			}
+		}
+		return userInput;
 
-		//TODO : verify that emails are in the right format and not blank etc....
-		return true;
 	}
-	public static boolean password(){
-		//TODO: verify that passwords are in an okay format
 
-		return true;
-	}
 
 
 }
